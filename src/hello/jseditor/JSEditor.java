@@ -8,11 +8,15 @@ import org.eclipse.jface.text.source.SourceViewerConfiguration;
 import org.eclipse.jface.text.source.VerticalRuler;
 import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.custom.VerifyKeyListener;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.VerifyEvent;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -87,7 +91,44 @@ public class JSEditor extends ApplicationWindow {
 			}
 		};
 		sourceViewer.appendVerifyKeyListener(verifyKeyListener);
+		// read here:
+		// http://www.eclipse.org/articles/StyledText%201/article1.html
+		final StyledText text = sourceViewer.getTextWidget();
+		text.addKeyListener(new KeyListener() {
 
+			@Override
+			public void keyReleased(KeyEvent e) {
+
+				if (e.stateMask == SWT.CTRL && e.keyCode == 'a') {
+					// 实现Ctrl + A
+					text.selectAll();
+
+				} else if (e.stateMask == SWT.CTRL && e.keyCode == 'd') {
+					// 模拟实现Eclipse中Ctrl+D的功能
+					// note that select.y is the length of the selection
+					Point select = text.getSelectionRange();
+					int startLine = text.getLineAtOffset(select.x);
+					int startLineOffset = text.getOffsetAtLine(startLine);
+					int endLine = text.getLineAtOffset(select.x + select.y);
+					int lineCount = endLine - startLine + 1;
+					for (int i = 0; i < lineCount; i++) {
+						String line = text.getLine(startLine);
+						// 尝试删除行(包含行尾的\r\n，如果有，没有会报异常)
+						try {
+							text.replaceTextRange(startLineOffset,
+									line.length() + 2, "");
+						} catch (Exception e2) {
+							text.replaceTextRange(startLineOffset,
+									line.length(), "");
+						}
+					}
+				}
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e) {
+			}
+		});
 		return parent;
 	}
 
