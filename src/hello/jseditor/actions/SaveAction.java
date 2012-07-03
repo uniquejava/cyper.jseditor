@@ -4,9 +4,9 @@ import hello.jseditor.JSEditor;
 
 import org.eclipse.jface.action.Action;
 
-public class OpenAction extends Action{
+public class SaveAction extends Action{
 	private JSEditor editor;
-	public OpenAction(JSEditor editor) {
+	public SaveAction(JSEditor editor) {
 		this.editor = editor;
 	}
 	
@@ -18,7 +18,7 @@ public class OpenAction extends Action{
 	@Override
 	public void run() {
 		try {
-			editor.document.open();
+			editor.document.save();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

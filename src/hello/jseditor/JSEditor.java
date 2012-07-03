@@ -1,8 +1,15 @@
 package hello.jseditor;
 
 import hello.jseditor.actions.OpenAction;
+import hello.jseditor.actions.RedoAction;
+import hello.jseditor.actions.SaveAction;
+import hello.jseditor.actions.FindAction;
+import hello.jseditor.actions.UndoAction;
 
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.ToolBarManager;
+import org.eclipse.jface.text.IUndoManager;
+import org.eclipse.jface.text.TextViewerUndoManager;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.text.source.SourceViewerConfiguration;
 import org.eclipse.jface.text.source.VerticalRuler;
@@ -29,12 +36,19 @@ import org.eclipse.swt.widgets.Shell;
  */
 public class JSEditor extends ApplicationWindow {
 
-	private EventManager eventManager;
-	private SourceViewer sourceViewer;
+	public SourceViewer sourceViewer;
+	public IUndoManager undoManager;
+	public MyDocument document = new MyDocument(this);
+	public EventManager eventManager = new EventManager(this);
+	
+	private IAction openAction = new OpenAction(this);
+	private IAction saveAction = new SaveAction(this);
+	private IAction undoAction = new UndoAction(this);
+	private IAction redoAction = new RedoAction(this);
+	private IAction findAction = new FindAction(this);
 
 	public JSEditor() {
 		super(null);
-		eventManager = new EventManager(this);
 
 		// 还要手动添加toolbar，真TMD的恶心.
 		this.addToolBar(SWT.FLAT);
@@ -57,7 +71,8 @@ public class JSEditor extends ApplicationWindow {
 		sourceViewer = new SourceViewer(top, new VerticalRuler(10),
 				SWT.V_SCROLL | SWT.H_SCROLL);
 
-		final Font font = new Font(getShell().getDisplay(), /* "Tahoma" */"Verdana", 12, SWT.NORMAL);
+		final Font font = new Font(getShell().getDisplay(), /* "Tahoma" */
+		"Verdana", 12, SWT.NORMAL);
 		sourceViewer.getTextWidget().setFont(font);
 		sourceViewer.getTextWidget().addDisposeListener(new DisposeListener() {
 			@Override
@@ -66,10 +81,7 @@ public class JSEditor extends ApplicationWindow {
 			}
 		});
 
-		// 当在文本框中输入文字时
-		// 可以通过MyDocument.get()取得输入的文字
-		// 同时可以在MyDocument.documentAboutToBeChanged()和documentChanged监听文本的变化
-		sourceViewer.setDocument(new MyDocument());
+		sourceViewer.setDocument(document);
 
 		// 语法着色 + 代码提示
 		final SourceViewerConfiguration config = new MySourceViewerConfiguration();
@@ -81,9 +93,11 @@ public class JSEditor extends ApplicationWindow {
 				// Check for Alt+/
 				if (event.stateMask == SWT.ALT && event.character == '/') {
 					// Check if source viewer is able to perform operation
-					if (sourceViewer.canDoOperation(SourceViewer.CONTENTASSIST_PROPOSALS)) {
+					if (sourceViewer
+							.canDoOperation(SourceViewer.CONTENTASSIST_PROPOSALS)) {
 						// Perform operation
-						sourceViewer.doOperation(SourceViewer.CONTENTASSIST_PROPOSALS);
+						sourceViewer
+								.doOperation(SourceViewer.CONTENTASSIST_PROPOSALS);
 					}
 					// Veto this key press to avoid further processing
 					event.doit = false;
@@ -91,6 +105,10 @@ public class JSEditor extends ApplicationWindow {
 			}
 		};
 		sourceViewer.appendVerifyKeyListener(verifyKeyListener);
+
+		undoManager = new TextViewerUndoManager(100);
+		undoManager.connect(sourceViewer);
+
 		// read here:
 		// http://www.eclipse.org/articles/StyledText%201/article1.html
 		final StyledText text = sourceViewer.getTextWidget();
@@ -122,6 +140,16 @@ public class JSEditor extends ApplicationWindow {
 									line.length(), "");
 						}
 					}
+				} else if (e.stateMask == SWT.CTRL && e.keyCode == 'z') {
+					undoAction.run();
+				} else if (e.stateMask == SWT.CTRL && e.keyCode == 'y') {
+					redoAction.run();
+				} else if (e.stateMask == SWT.CTRL && e.keyCode == 'f') {
+					findAction.run();
+				} else if (e.stateMask == SWT.CTRL && e.keyCode == 'o') {
+					openAction.run();
+				} else if (e.stateMask == SWT.CTRL && e.keyCode == 's') {
+					saveAction.run();
 				}
 			}
 
@@ -134,17 +162,13 @@ public class JSEditor extends ApplicationWindow {
 
 	@Override
 	protected ToolBarManager createToolBarManager(int style) {
-		ToolBarManager tbm = new ToolBarManager();
-		tbm.add(new OpenAction(this));
-		return tbm;
-	}
-
-	public SourceViewer getSourceViewer() {
-		return sourceViewer;
-	}
-
-	public EventManager getEventManager() {
-		return eventManager;
+		ToolBarManager toolbarManager = new ToolBarManager();
+		toolbarManager.add(openAction);
+		toolbarManager.add(saveAction);
+		toolbarManager.add(undoAction );
+		toolbarManager.add(redoAction );
+		toolbarManager.add(findAction);
+		return toolbarManager;
 	}
 
 	public static void main(String[] args) {
